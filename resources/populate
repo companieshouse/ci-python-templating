@@ -1,0 +1,88 @@
+#!/usr/local/bin/python
+
+import jinja2
+import json
+import os
+import sys
+
+from pathlib import Path
+
+class text:
+    BLUE        = '\033[1;34m'
+    BOLD        = '\033[1m'
+    RESET       = '\033[0m'
+    RED         = '\033[0;31m'
+    YELLOW      = '\033[1;33m'
+
+def populate_template(path, template, values, output):
+    templateLoader = jinja2.FileSystemLoader(path,"utf-8")
+    templateEnvironment = jinja2.Environment(
+        loader=templateLoader,
+        undefined=jinja2.StrictUndefined
+    )
+
+    Path(output).parent.mkdir(parents=True, exist_ok=True)
+    template = templateEnvironment.get_template(template)
+    template.stream(values).dump(output);
+
+def print_error(string):
+    print(f"{text.RED}Error:{text.RESET} {string}")
+
+def print_info(string):
+    print(f"{text.BLUE}Info:{text.RESET} {string}")
+
+def print_warning(string):
+    print(f"{text.YELLOW}Warning:{text.RESET} {string}")
+
+def usage():
+    print_info(f"""Usage: {sys.argv[0]} <options>
+    options:
+        -t|--template <template>
+        -v|--values <values>
+        -o|--output <output>""")
+
+def verify_set(variables):
+    for variable in variables:
+        if (variables[variable] is None):
+            print_error(f"Missing argument [{text.BOLD}{variable}{text.RESET}]")
+            usage()
+            sys.exit(1);
+
+def main():
+    arguments = sys.argv[1:]
+    template = None
+    values = None
+    output = None
+
+    while len(arguments) > 0:
+        if arguments[0] in ["-t", "--template"]:
+            template = arguments[1]
+            arguments = arguments[2:]
+            continue
+        elif arguments[0] in ["-v", "--values"]:
+            values = arguments[1]
+            arguments = arguments[2:]
+            continue
+        elif arguments[0] in ["-o", "--output"]:
+            output = arguments[1]
+            arguments = arguments[2:]
+            continue
+        else:
+            print_error(f"Unknown argument [{text.BOLD}{arguments[0]}{text.RESET}]")
+            usage()
+            sys.exit(1);
+
+    verify_set({
+        '-t|--template' : template,
+        '-v|--values' : values,
+        '-o|--output' : output
+    })
+
+    with open(values, 'r') as values_file:
+        values = json.load(values_file)
+
+    print_info(f"Populating template: [{text.BOLD}{template}{text.RESET}] -> [{text.BOLD}{output}{text.RESET}]")
+    populate_template(".", template, values, output)
+
+if __name__ == '__main__':
+    main()
